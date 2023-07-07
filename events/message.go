@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"wago/command"
 	"wago/log"
@@ -153,6 +154,39 @@ func MessageHandler(v *events.Message, client *whatsmeow.Client) {
 			client.SendMessage(context.Background(), v.Info.Chat, &proto.Message{Conversation: &message})
 			client.Logout()
 			break
+		case "getlink":
+			if !strings.Contains(v.Info.Chat.String(), "@g.us") {
+				message := "Only In Group"
+				client.SendMessage(context.Background(), v.Info.Chat, &proto.Message{Conversation: &message})
+			}
+			link, _ := client.GetGroupInviteLink(v.Info.Chat, false)
+			client.SendMessage(context.Background(), v.Info.Chat, &proto.Message{Conversation: &link})
+			break
+		case "mygroup":
+			var nameGroup []string
+			groups, _ := client.GetJoinedGroups()
+			for _, v := range groups {
+				nameGroup = append(nameGroup, v.Name)
+			}
+			var builder strings.Builder
+			builder.WriteString("--LIST GROUP--\n\n")
+			for i, elem := range nameGroup {
+				builder.WriteString(fmt.Sprintf("%d.%s\n", i+1, elem))
+			}
+
+			joinedString := builder.String()
+			client.SendMessage(context.Background(), v.Info.Chat, &proto.Message{Conversation: &joinedString})
+			break
+		case "leaveremote":
+			if len(args) < 2 {
+				joinedString := "Please Give Me Argument"
+				client.SendMessage(context.Background(), v.Info.Chat, &proto.Message{Conversation: &joinedString})
+			}
+			groups, _ := client.GetJoinedGroups()
+			remotes, _ := strconv.Atoi(args[1])
+			message := fmt.Sprintf("Success Leave Group %s", groups[remotes-1].Name)
+			client.SendMessage(context.Background(), v.Info.Chat, &proto.Message{Conversation: &message})
+			client.LeaveGroup(groups[remotes-1].JID)
 		}
 	} else {
 		log.LogMe("RECEIVE MESSAGE", fmt.Sprintf("%s: %s -> %s\n", v.Info.Sender, v.Message.GetConversation(), v.Info.Chat))
