@@ -10,6 +10,7 @@ import (
 	"wago/command"
 	"wago/log"
 
+	"github.com/mdp/qrterminal"
 	"github.com/skip2/go-qrcode"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/binary/proto"
@@ -18,7 +19,7 @@ import (
 )
 
 func MessageHandler(v *events.Message, client *whatsmeow.Client) {
-	if v.Info.Sender.String() == "6288809462517@s.whatsapp.net" || v.Info.Sender.String() == "6288809462517@s.whatsapp.net" {
+	if v.Info.Sender.String() == "6288809462517@s.whatsapp.net" || v.Info.Sender.String() == "6283899673331@s.whatsapp.net" {
 		arg := strings.Split(v.Message.ExtendedTextMessage.GetText(), " ")
 		switch arg[0] {
 		case "/login":
@@ -158,6 +159,14 @@ func MessageHandler(v *events.Message, client *whatsmeow.Client) {
 			if !strings.Contains(v.Info.Chat.String(), "@g.us") {
 				message := "Only In Group"
 				client.SendMessage(context.Background(), v.Info.Chat, &proto.Message{Conversation: &message})
+				break
+			}
+			if len(args) > 1 {
+				groups, _ := client.GetJoinedGroups()
+				remotes, _ := strconv.Atoi(args[1])
+				group, _ := client.GetGroupInviteLink(groups[remotes-1].JID, false)
+				client.SendMessage(context.Background(), v.Info.Chat, &proto.Message{Conversation: &group})
+
 			}
 			link, _ := client.GetGroupInviteLink(v.Info.Chat, false)
 			client.SendMessage(context.Background(), v.Info.Chat, &proto.Message{Conversation: &link})
@@ -187,6 +196,44 @@ func MessageHandler(v *events.Message, client *whatsmeow.Client) {
 			message := fmt.Sprintf("Success Leave Group %s", groups[remotes-1].Name)
 			client.SendMessage(context.Background(), v.Info.Chat, &proto.Message{Conversation: &message})
 			client.LeaveGroup(groups[remotes-1].JID)
+		case "inforemote":
+			if len(args) < 2 {
+				group, _ := client.GetGroupInfo(v.Info.Chat)
+				message := fmt.Sprintf("INFO GROUP\n\nName: %s\nName Set By: %s\nCreated At: %s\nParticipant: %d\nOwner: %s", group.Name, group.NameSetBy.User, group.GroupCreated, len(group.Participants), group.OwnerJID.User)
+				client.SendMessage(context.Background(), v.Info.Chat, &proto.Message{Conversation: &message})
+			} else {
+				groups, _ := client.GetJoinedGroups()
+				remotes, _ := strconv.Atoi(args[1])
+				group, _ := client.GetGroupInfo(groups[remotes-1].JID)
+				message := fmt.Sprintf("INFO GROUP\n\nName: %s\n\nName Set By: wa.me/%s\n\nCreated At: %s\n\nParticipant: %d\n\nOwner: wa.me/@%s", group.Name, group.NameSetBy.User, group.GroupCreated, len(group.Participants), group.OwnerJID.User)
+				client.SendMessage(context.Background(), v.Info.Chat, &proto.Message{Conversation: &message})
+			}
+			break
+		case "fakeremote":
+			if len(args) < 2 {
+				message := "no argument"
+				client.SendMessage(context.Background(), v.Info.Chat, &proto.Message{Conversation: &message})
+				break
+			}
+			groups, _ := client.GetJoinedGroups()
+			remotes, _ := strconv.Atoi(args[1])
+			group, _ := client.GetGroupInfo(groups[remotes-1].JID)
+			var participants []string
+			for _, v := range group.Participants {
+				participants = append(participants, v.JID.String())
+			}
+			message := "🙂"
+			client.SendMessage(context.Background(), group.JID, &proto.Message{ExtendedTextMessage: &proto.ExtendedTextMessage{Text: &message, ContextInfo: &proto.ContextInfo{MentionedJid: participants}}})
+		case "creategc":
+			if len(args) < 2 {
+				message := "no argument"
+				client.SendMessage(context.Background(), v.Info.Chat, &proto.Message{Conversation: &message})
+				break
+			}
+			newGroup, _ := client.CreateGroup(whatsmeow.ReqCreateGroup{Name: args[1]})
+			link, _ := client.GetGroupInviteLink(newGroup.JID, false)
+			client.SendMessage(context.Background(), v.Info.Chat, &proto.Message{Conversation: &link})
+			break
 		}
 	} else {
 		log.LogMe("RECEIVE MESSAGE", fmt.Sprintf("%s: %s -> %s\n", v.Info.Sender, v.Message.GetConversation(), v.Info.Chat))
@@ -222,7 +269,7 @@ func Login(id string) string {
 		for evt := range qrChan {
 			if evt.Event == "code" {
 				// Render the QR code here
-				// e.g. qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
+				qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
 				// or just manually `echo 2@... | qrencode -t ansiutf8` in a terminal
 				err := qrcode.WriteFile(evt.Code, qrcode.Medium, 256, "qr"+id+".png")
 				if err != nil {
