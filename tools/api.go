@@ -4,7 +4,7 @@ import "fmt"
 
 const (
 	API_BASE = "https://api.vhtear.com/"
-	API_KEY  = "e6355682Feb4d1Fe4f43Fe912aFea12c2d16a9c8VHTear"
+	API_KEY  = "API_KEY"
 )
 
 func HitEndpointStringURL(param string) string {
